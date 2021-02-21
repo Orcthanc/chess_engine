@@ -128,12 +128,10 @@ namespace chess {
 				return static_cast<Piece>( PieceQueen | PieceBlack );
 			case 'k':
 				return static_cast<Piece>( PieceKing | PieceBlack );
-			case 'e':
-				return static_cast<Piece>( PieceError );
 			case '0':
-				return static_cast<Piece>( PieceNone );
+				return PieceNone;
 			default:
-				return static_cast<Piece>( PieceError );
+				return PieceError;
 		}
 	}
 
