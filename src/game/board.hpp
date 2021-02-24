@@ -4,10 +4,10 @@
 #include <array>
 #include <stdint.h>
 #include <string>
-#include <sstream>
-#include <cstring>
+#include <unordered_map>
+#include <vector>
 
-#include <iostream>
+#include <compare>
 
 namespace chess {
 	enum Piece: int {
@@ -30,6 +30,64 @@ namespace chess {
 		SideKingWhite = 2,
 		SideQueenBlack = 4,
 		SideKingBlack = 8,
+	};
+
+	struct Field {
+		int field;
+
+		std::string toAlgebraic(){
+			std::string temp = "a";
+			temp.at( 0 ) = static_cast<char>( field % 10 - 1 + 'a' );
+			return temp
+				+ std::to_string( field / 10 - 1 );
+		}
+
+		Field& fromAlgebraic( const std::string& s ){
+			const char* temp = s.c_str();
+
+			field = ( *temp++ - 'a' ) * 10;
+			field += ( *temp - '0' ) + 1;
+
+			return *this;
+		}
+
+		Field& fromNumbers( uint8_t x, uint8_t y ){
+			field = 11 + 10 * y + x;
+			return *this;
+		}
+
+		auto operator<=>( const Field& other ) const = default;
+
+		static constexpr Field nullField(){
+			return Field{ std::numeric_limits<int>::max() };
+		}
+	};
+
+	struct Board {
+		std::array<Piece, 120> board;
+		std::unordered_map<Piece, std::vector<Field>> pieces;
+		Field en_passant;
+		bool whiteTurn = true;
+		Sides castling;
+		size_t halfmove = 0;
+		size_t fullmove = 1;
+
+		Board();
+
+		inline Piece* operator[]( uint8_t rank ){
+			return &board[20 + rank * 10];
+		}
+
+		inline Piece operator[]( const Field& f ){
+			return board[f.field];
+		}
+
+		std::string toFEN();
+		bool fromFen( const std::string& fen );
+
+		std::string pretty_string();
+
+		void reset();
 	};
 
 	inline char toLetter( Piece p ){
@@ -134,195 +192,4 @@ namespace chess {
 				return PieceError;
 		}
 	}
-
-	struct Board {
-		std::array<Piece, 120> board;
-		std::pair<uint8_t, uint8_t> en_passant;
-		bool whiteTurn = true;
-		Sides castling;
-		size_t halfmove = 0;
-		size_t fullmove = 1;
-
-		Board(){
-			std::memset( board.data(), PieceError, 120 );
-
-			for( size_t y = 0; y < 8; ++y ){
-				for( size_t x = 0; x < 8; ++x ){
-					operator[]( y )[x] = PieceNone;
-				}
-			}
-			en_passant = std::make_pair<uint8_t, uint8_t>( 255, 255 );
-			castling = Sides( SideQueenWhite | SideKingWhite | SideQueenBlack | SideKingBlack );
-		}
-
-		inline Piece* operator[]( uint8_t rank ){
-			return &board[20 + rank * 10];
-		}
-
-		std::string toFEN(){
-			int counter = 0;
-			std::stringstream res;
-
-			for( size_t y = 0; y < 8; ++y ){
-				Piece* rank = (*this)[y];
-				for( size_t x = 0; x < 8; ++x ){
-					if( !rank[x] ){
-						++counter;
-					} else {
-						if( counter ){
-							res << counter;
-							counter = 0;
-						}
-
-						res << toLetter( rank[x] );
-					}
-				}
-				if( counter ){
-					res << counter;
-					counter = 0;
-				}
-
-				if( y != 7 )
-					res << '/';
-			}
-
-			res << ' ' << ( whiteTurn ? 'w' : 'b' ) << ' ';
-
-
-			if( !castling )
-				res << '-';
-			else {
-				if( castling & SideKingWhite )
-					res << 'K';
-				if( castling & SideQueenWhite )
-					res << 'Q';
-				if( castling & SideKingBlack )
-					res << 'k';
-				if( castling & SideQueenWhite )
-					res << 'q';
-			}
-
-			res << ' ';
-
-			if( en_passant == std::make_pair<uint8_t, uint8_t>( 255, 255 )){
-				res << '-';
-			} else {
-				res << static_cast<char>( 'a' + en_passant.first ) << static_cast<int>( en_passant.second );
-			}
-
-			res << ' ' << halfmove << ' ' << fullmove;
-
-			return res.str();
-		}
-
-
-		bool fromFen( const std::string& fen ){
-
-			std::memset( board.data(), PieceError, 120 );
-
-			for( size_t y = 0; y < 8; ++y ){
-				for( size_t x = 0; x < 8; ++x ){
-					operator[]( y )[x] = PieceNone;
-				}
-			}
-			const char* letter = fen.c_str();
-
-			uint8_t rank = 0, file = 0;
-			for( ;; ){
-				if( !letter )
-					return false;
-
-				if( *letter == ' ' )
-					break;
-				if( *letter == '/' ){
-					++letter;
-					++rank;
-					file = 0;
-					continue;
-				}
-
-				if( isdigit( *letter )){
-					file += *letter - '0';
-					++letter;
-				} else {
-					operator[]( rank )[file++] = fromLetter( *letter++ );
-				}
-			}
-
-#define chess_expect( a, b ) if( a != b ) return false;
-//#define chess_expect( a, b ) if( a != b ) throw std::runtime_error( "asdf" );
-
-			chess_expect( *letter++, ' ' );
-
-			if( *letter == 'w' ){
-				whiteTurn = true;
-			} else if( *letter == 'b' ){
-				whiteTurn = false;
-			} else {
-				return false;
-			}
-
-			++letter;
-
-			chess_expect( *letter++, ' ' );
-
-			castling = SideNone;
-
-			if( *letter != '-' ){
-				while( *letter != ' ' ){
-					if( !*letter )
-						return false;
-					switch( *letter++ ){
-						case 'Q':
-							castling = static_cast<Sides>( castling | SideQueenWhite );
-							break;
-						case 'K':
-							castling = static_cast<Sides>( castling | SideKingWhite );
-							break;
-						case 'q':
-							castling = static_cast<Sides>( castling | SideQueenBlack );
-							break;
-						case 'k':
-							castling = static_cast<Sides>( castling | SideKingBlack );
-					}
-				}
-			}else {
-				++letter;
-			}
-			chess_expect( *letter++, ' ' );
-
-			if( *letter == '-' ){
-				en_passant = std::make_pair<uint8_t, uint8_t>( 255, 255 );
-				++letter;
-			} else {
-				uint8_t rank = *letter++ - 'a';
-				uint8_t file = *letter++ - '0';
-
-				en_passant = std::make_pair( rank, file );
-			}
-
-			chess_expect( *letter++, ' ' );
-
-			char* rest;
-
-			halfmove = strtol( letter, &rest, 10 );
-
-			fullmove = strtol( rest, nullptr, 10 );
-
-			return true;
-		}
-
-		std::string pretty_string(){
-			std::stringstream res;
-
-			for( size_t y = 0; y < 8; ++y ){
-				for( size_t x = 0; x < 8; ++x ){
-					res << toSymbol( operator[]( y )[x] );
-				}
-				res << "\n";
-			}
-
-			return res.str();
-		}
-	};
 }
