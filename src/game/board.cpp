@@ -7,16 +7,16 @@
 using namespace chess;
 
 Board::Board(){
- reset();
+	reset();
 }
 
 std::string Board::toFEN(){
 	int counter = 0;
 	std::stringstream res;
 
-	for( size_t y = 0; y < 8; ++y ){
+	for( int y = 7; y >= 0; --y ){
 		Piece* rank = (*this)[y];
-		for( size_t x = 0; x < 8; ++x ){
+		for( int x = 0; x < 8; ++x ){
 			if( !rank[x] ){
 				++counter;
 			} else {
@@ -33,7 +33,7 @@ std::string Board::toFEN(){
 			counter = 0;
 		}
 
-		if( y != 7 )
+		if( y != 0 )
 			res << '/';
 	}
 
@@ -72,7 +72,7 @@ bool Board::fromFen( const std::string& fen ){
 
 	const char* letter = fen.c_str();
 
-	uint8_t rank = 0, file = 0;
+	uint8_t rank = 7, file = 0;
 	for( ;; ){
 		if( !*letter )
 			return false;
@@ -81,7 +81,7 @@ bool Board::fromFen( const std::string& fen ){
 			break;
 		else if( *letter == '/' ){
 			++letter;
-			++rank;
+			--rank;
 			file = 0;
 		} else if( isdigit( *letter )){
 			file += *letter - '0';
@@ -173,8 +173,8 @@ bool Board::fromFen( const std::string& fen ){
 std::string Board::pretty_string(){
 	std::stringstream res;
 
-	for( size_t y = 0; y < 8; ++y ){
-		for( size_t x = 0; x < 8; ++x ){
+	for( int y = 7; y >= 0; --y ){
+		for( int x = 0; x < 8; ++x ){
 			res << toSymbol( operator[]( y )[x] );
 		}
 		res << "\n";
