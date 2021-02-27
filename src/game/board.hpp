@@ -26,10 +26,14 @@ namespace chess {
 
 	enum Sides: int {
 		SideNone = 0,
+
 		SideQueenWhite = 1,
 		SideKingWhite = 2,
+		SideWhite = 3,
+
 		SideQueenBlack = 4,
 		SideKingBlack = 8,
+		SideBlack = 12,
 	};
 
 	struct Field {
@@ -45,14 +49,14 @@ namespace chess {
 		Field& fromAlgebraic( const std::string& s ){
 			const char* temp = s.c_str();
 
-			field = ( *temp++ - 'a' ) * 10;
-			field += ( *temp - '0' ) + 1;
+			field = *temp++ - 'a' + 1;
+			field += ( *temp - '0' + 1 ) * 10;
 
 			return *this;
 		}
 
 		Field& fromNumbers( uint8_t x, uint8_t y ){
-			field = 11 + 10 * y + x;
+			field = 21 + 10 * y + x;
 			return *this;
 		}
 
@@ -75,7 +79,7 @@ namespace chess {
 		Board();
 
 		inline Piece* operator[]( uint8_t rank ){
-			return &board[20 + rank * 10];
+			return &board[21 + rank * 10];
 		}
 
 		inline Piece operator[]( const Field& f ){

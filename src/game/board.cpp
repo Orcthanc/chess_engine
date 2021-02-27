@@ -88,12 +88,12 @@ bool Board::fromFen( const std::string& fen ){
 			++letter;
 		} else {
 			Piece temp = fromLetter( *letter++ );
-			pieces[temp].emplace_back( Field().fromNumbers( file, rank + 1 ));
+			pieces[temp].emplace_back( Field().fromNumbers( file, rank ));
 			operator[]( rank )[file++] = temp;
 		}
 	}
 
-#define chess_expect( a, b ) if( a != b ) return false;
+#define chess_expect( a, b ) if( (a) != (b) ) return false;
 
 	chess_expect( *letter++, ' ' );
 
@@ -140,13 +140,13 @@ bool Board::fromFen( const std::string& fen ){
 	} else {
 		if( !*letter )
 			return false;
-		uint8_t rank = *letter++ - 'a';
+		uint8_t file = *letter++ - 'a';
 
 		if( !*letter )
 			return false;
-		uint8_t file = *letter++ - '0';
+		uint8_t rank = *letter++ - '0' - 1;
 
-		en_passant = Field().fromNumbers( rank, file );
+		en_passant = Field().fromNumbers( file, rank );
 	}
 
 	chess_expect( *letter++, ' ' );
@@ -184,7 +184,7 @@ std::string Board::pretty_string(){
 }
 
 void Board::reset(){
-	std::memset( board.data(), PieceError, 120 );
+	board.fill( PieceError );
 
 	for( size_t y = 0; y < 8; ++y ){
 		for( size_t x = 0; x < 8; ++x ){
